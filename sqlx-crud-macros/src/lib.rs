@@ -145,7 +145,7 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
         .iter()
         .flat_map(|f| &f.ident)
         .filter(|i| config.external_id || *i != &config.id_column_ident)
-        .map(|i| quote! { args.add(self.#i); });
+        .map(|i| quote! { let _ = args.add(self.#i); });
 
     let insert_query_size = config
         .named
@@ -159,9 +159,9 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
         .iter()
         .flat_map(|f| &f.ident)
         .filter(|i| *i != &config.id_column_ident)
-        .map(|i| quote! { args.add(self.#i); });
+        .map(|i| quote! { let _ = args.add(self.#i); });
 
-    let update_query_args_id = quote! { args.add(self.#id_column_ident); };
+    let update_query_args_id = quote! { let _ = args.add(self.#id_column_ident); };
 
     let update_query_size = config
         .named
@@ -213,17 +213,17 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
 
         #[automatically_derived]
         impl<'e> #crate_name::traits::Crud<'e, &'e ::sqlx::pool::Pool<#db_ty>> for #ident {
-            fn insert_args(self) -> <#db_ty as ::sqlx::database::HasArguments<'e>>::Arguments {
+            fn insert_args(self) -> <#db_ty as ::sqlx::database::Database>::Arguments<'e> {
                 use ::sqlx::Arguments as _;
-                let mut args = <#db_ty as ::sqlx::database::HasArguments<'e>>::Arguments::default();
+                let mut args = <#db_ty as ::sqlx::database::Database>::Arguments::default();
                 args.reserve(1usize, #(#insert_query_size)+*);
                 #(#insert_query_args)*
                 args
             }
 
-            fn update_args(self) -> <#db_ty as ::sqlx::database::HasArguments<'e>>::Arguments {
+            fn update_args(self) -> <#db_ty as ::sqlx::database::Database>::Arguments<'e> {
                 use ::sqlx::Arguments as _;
-                let mut args = <#db_ty as ::sqlx::database::HasArguments<'e>>::Arguments::default();
+                let mut args = <#db_ty as ::sqlx::database::Database>::Arguments::default();
                 args.reserve(1usize, #(#update_query_size)+*);
                 #(#update_query_args)*
                 #update_query_args_id
