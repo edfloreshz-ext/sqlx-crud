@@ -18,7 +18,9 @@ use sqlx_crud::SqlxCrud;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[derive(FromRow, Deserialize, Serialize, SqlxCrud)]
+#[table(tasks)]
 struct Task {
+    #[id]
     pub id: i64,
     pub task: String,
 }

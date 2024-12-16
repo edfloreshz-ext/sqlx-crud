@@ -9,7 +9,7 @@ use syn::{
     LitStr,
 };
 
-#[proc_macro_derive(SqlxCrud, attributes(database, external_id, id))]
+#[proc_macro_derive(SqlxCrud, attributes(database, table, external_id, id))]
 pub fn derive(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident, data, attrs, ..
@@ -282,8 +282,6 @@ impl<'a> Config<'a> {
         let model_schema_ident =
             format_ident!("{}_SCHEMA", ident.to_string().to_screaming_snake_case());
 
-        let table_name = ident.to_string().to_table_case();
-
         // Search for a field with the #[id] attribute
         let id_attr = &named
             .iter()
@@ -301,6 +299,22 @@ impl<'a> Config<'a> {
             .clone();
 
         let external_id = attrs.iter().any(|a| a.path().is_ident("external_id"));
+
+        let table_name = attrs
+            .iter()
+            .find(|a| a.path().is_ident("table"))
+            .and_then(|attr| {
+                let mut table = None;
+                attr.parse_nested_meta(|meta| {
+                    if let Some(ident) = meta.path.get_ident() {
+                        table = Some(ident.to_string());
+                    }
+                    Ok(())
+                })
+                .ok();
+                table
+            })
+            .unwrap_or_else(|| ident.to_string().to_table_case());
 
         Self {
             ident,
