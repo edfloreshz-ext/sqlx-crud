@@ -239,7 +239,7 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
                 args
             }
 
-            fn paginated_args(self, limit: i64, offset: i64) -> <#db_ty as ::sqlx::database::Database>::Arguments<'e> {
+            fn paginated_args(limit: i64, offset: i64) -> <#db_ty as ::sqlx::database::Database>::Arguments<'e> {
                 use ::sqlx::Arguments as _;
                 let mut args = <#db_ty as ::sqlx::database::Database>::Arguments::default();
                 args.reserve(2usize,

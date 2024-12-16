@@ -1,5 +1,5 @@
 use anyhow::Context;
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing;
@@ -23,10 +23,30 @@ struct Task {
     pub task: String,
 }
 
-async fn tasks(Extension(pool): Extension<SqlitePool>) -> Response {
-    match Task::all(&pool).await {
-        Ok(tasks) => (StatusCode::OK, Json(tasks)).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+#[derive(Debug, Deserialize)]
+struct Pagination {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
+async fn tasks(
+    Extension(pool): Extension<SqlitePool>,
+    Query(query): Query<Pagination>,
+) -> Response {
+    match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => match Task::paginated(&pool, limit, offset).await {
+            Ok(tasks) => (StatusCode::OK, Json(tasks)).into_response(),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+        },
+        (Some(limit), None) => match Task::paginated(&pool, limit, 0).await {
+            Ok(tasks) => (StatusCode::OK, Json(tasks)).into_response(),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+        },
+        (None, None) => match Task::all(&pool).await {
+            Ok(tasks) => (StatusCode::OK, Json(tasks)).into_response(),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR).into_response(),
+        },
+        _ => (StatusCode::BAD_REQUEST, "Must provide limit").into_response(),
     }
 }
 

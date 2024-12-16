@@ -195,7 +195,7 @@ where
     /// Returns an owned instance of [sqlx::Arguments]. self is consumed.
     /// Values in the fields are moved in to the `Arguments` instance.
     ///
-    fn paginated_args(self, limit: i64, offset: i64) -> <E::Database as Database>::Arguments<'e>;
+    fn paginated_args(limit: i64, offset: i64) -> <E::Database as Database>::Arguments<'e>;
 
     /// Returns a future that resolves to an insert or `sqlx::Error` of the
     /// current instance.
@@ -256,19 +256,12 @@ where
     /// ```
     ///
     /// [try_collect]: https://docs.rs/futures/latest/futures/stream/trait.TryStreamExt.html#method.try_collect
-    fn paginated(self, pool: E, limit: Option<i64>, offset: Option<i64>) -> CrudFut<'e, Vec<Self>> {
+    fn paginated(pool: E, limit: i64, offset: i64) -> CrudFut<'e, Vec<Self>> {
         Box::pin({
-            if let (Some(limit), Some(offset)) = (limit, offset) {
-                ::sqlx::query_with::<E::Database, _>(
-                    Self::paginated_sql(),
-                    self.paginated_args(limit, offset),
-                )
-            } else {
-                ::sqlx::query_with::<E::Database, _>(
-                    Self::select_sql(),
-                    <E::Database as ::sqlx::database::Database>::Arguments::default(),
-                )
-            }
+            ::sqlx::query_with::<E::Database, _>(
+                Self::paginated_sql(),
+                Self::paginated_args(limit, offset),
+            )
             .try_map(|r| Self::from_row(&r))
             .fetch_all(pool)
         })
