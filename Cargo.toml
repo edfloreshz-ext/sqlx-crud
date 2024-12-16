@@ -1,10 +1,5 @@
 [workspace]
-members = [
-  ".",
-  "sqlx-crud-macros",
-  "examples/axum",
-  "examples/serenity",
-]
+members = [".", "sqlx-crud-macros", "examples/axum", "examples/serenity"]
 
 [package]
 name = "sqlx-crud"
@@ -21,19 +16,19 @@ authors = ["Trey Dempsey <trey.dempsey@gmail.com>"]
 
 [features]
 default = ["runtime-tokio-rustls"]
-runtime-actix-native-tls = ["sqlx/runtime-actix-native-tls"]
-runtime-async-std-native-tls = ["sqlx/runtime-async-std-native-tls"]
-runtime-tokio-native-tls = ["sqlx/runtime-tokio-native-tls"]
-runtime-actix-rustls = ["sqlx/runtime-actix-rustls"]
-runtime-async-std-rustls = ["sqlx/runtime-async-std-rustls"]
-runtime-tokio-rustls = ["sqlx/runtime-tokio-rustls"]
+runtime-actix-native-tls = ["sqlx/runtime-tokio", "sqlx/tls-native-tls"]
+runtime-async-std-native-tls = ["sqlx/runtime-async-std", "sqlx/tls-native-tls"]
+runtime-tokio-native-tls = ["sqlx/runtime-tokio", "sqlx/tls-native-tls"]
+runtime-actix-rustls = ["sqlx/runtime-tokio", "sqlx/tls-rustls"]
+runtime-async-std-rustls = ["sqlx/runtime-async-std", "sqlx/tls-rustls"]
+runtime-tokio-rustls = ["sqlx/runtime-tokio", "sqlx/tls-rustls"]
 
 [dependencies]
 futures = "0.3"
-sqlx = { version = "0.6" }
+sqlx = { version = "0.8" }
 sqlx-crud-macros = { version = "0.4", path = "sqlx-crud-macros" }
 thiserror = "1"
 
 [dev-dependencies]
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "sqlite"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "sqlite"] }
 tokio-test = "0"

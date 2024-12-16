@@ -5,8 +5,8 @@ use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{
-    parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Expr, Field, Fields, FieldsNamed, Ident,
-    LitStr, Meta, MetaNameValue, Lit, ExprLit,
+    parse_macro_input, Attribute, Data, DataStruct, DeriveInput, Field, Fields, FieldsNamed, Ident,
+    LitStr,
 };
 
 #[proc_macro_derive(SqlxCrud, attributes(database, external_id, id))]
@@ -322,14 +322,17 @@ impl From<&str> for DbType {
 impl DbType {
     fn new(attrs: &[Attribute]) -> Self {
         let mut db_type = DbType::Sqlite;
-        attrs.iter()
+        attrs
+            .iter()
             .find(|a| a.path().is_ident("database"))
-            .map(|a| a.parse_nested_meta(|m| {
-                if let Some(path) = m.path.get_ident() {
-                    db_type = DbType::from(path.to_string().as_str());
-                }
-                Ok(())
-            }));
+            .map(|a| {
+                a.parse_nested_meta(|m| {
+                    if let Some(path) = m.path.get_ident() {
+                        db_type = DbType::from(path.to_string().as_str());
+                    }
+                    Ok(())
+                })
+            });
 
         db_type
     }

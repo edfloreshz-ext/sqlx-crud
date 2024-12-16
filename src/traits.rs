@@ -4,7 +4,6 @@ use futures::stream::Stream;
 use futures::stream::TryCollect;
 use futures::Future;
 use futures::{future, TryFutureExt, TryStreamExt};
-use sqlx::database::HasArguments;
 use sqlx::{Database, Encode, Executor, FromRow, IntoArguments, Type};
 
 /// Type alias for methods returning a single element. The future resolves to and
@@ -168,17 +167,17 @@ where
     <Self as Schema>::Id:
         Encode<'e, <E as Executor<'e>>::Database> + Type<<E as Executor<'e>>::Database>,
     E: Executor<'e> + 'e,
-    <E::Database as HasArguments<'e>>::Arguments: IntoArguments<'e, <E as Executor<'e>>::Database>,
+    <E::Database as Database>::Arguments<'e>: IntoArguments<'e, E::Database>,
 {
     /// Returns an owned instance of [sqlx::Arguments]. self is consumed.
     /// Values in the fields are moved in to the `Arguments` instance.
     ///
-    fn insert_args(self) -> <E::Database as HasArguments<'e>>::Arguments;
+    fn insert_args(self) -> <E::Database as Database>::Arguments<'e>;
 
     /// Returns an owned instance of [sqlx::Arguments]. self is consumed.
     /// Values in the fields are moved in to the `Arguments` instance.
     ///
-    fn update_args(self) -> <E::Database as HasArguments<'e>>::Arguments;
+    fn update_args(self) -> <E::Database as Database>::Arguments<'e>;
 
     /// Returns a future that resolves to an insert or `sqlx::Error` of the
     /// current instance.
@@ -247,12 +246,12 @@ where
         Box::pin({
             use ::sqlx::Arguments as _;
             let arg0 = id;
-            let mut args = <E::Database as HasArguments<'e>>::Arguments::default();
+            let mut args = <E::Database as Database>::Arguments::default();
             args.reserve(
                 1usize,
                 ::sqlx::encode::Encode::<E::Database>::size_hint(&arg0),
             );
-            args.add(arg0);
+            let _ = args.add(arg0);
             ::sqlx::query_with::<E::Database, _>(Self::select_by_id_sql(), args)
                 .try_map(|r| Self::from_row(&r))
                 .fetch_optional(pool)
