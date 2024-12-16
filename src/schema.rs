@@ -7,4 +7,5 @@ pub struct Metadata<'s, const C: usize> {
     pub insert_sql: &'s str,
     pub update_by_id_sql: &'s str,
     pub delete_by_id_sql: &'s str,
+    pub paginated_sql: &'s str,
 }

@@ -150,6 +150,19 @@ pub trait Schema {
     /// # }}
     /// ```
     fn delete_by_id_sql() -> &'static str;
+
+    /// Returns the SQL for paginated queries.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # sqlx_crud::doctest_setup! { |pool| {
+    /// use sqlx_crud::Schema;
+    ///
+    /// assert_eq!(r#"SELECT "users"."user_id", "users"."name" FROM "users" LIMIT ? OFFSET ?"#, User::paginated_sql());
+    /// # }}
+    /// ```
+    fn paginated_sql() -> &'static str;
 }
 
 /// Common Create, Read, Update, and Delete behaviors. This trait requires that
@@ -178,6 +191,11 @@ where
     /// Values in the fields are moved in to the `Arguments` instance.
     ///
     fn update_args(self) -> <E::Database as Database>::Arguments<'e>;
+
+    /// Returns an owned instance of [sqlx::Arguments]. self is consumed.
+    /// Values in the fields are moved in to the `Arguments` instance.
+    ///
+    fn paginated_args(self, limit: i64, offset: i64) -> <E::Database as Database>::Arguments<'e>;
 
     /// Returns a future that resolves to an insert or `sqlx::Error` of the
     /// current instance.
@@ -223,9 +241,37 @@ where
         stream.try_collect()
     }
 
-    #[doc(hidden)]
-    fn paged(_pool: E) -> TryCollectFut<'e, Self> {
-        unimplemented!()
+    /// Queries all records from the table with pagination and returns a future
+    /// that returns to a [try_collect] stream, which resolves to a `Vec<Self>`
+    /// or a `sqlx::Error` on error.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # sqlx_crud::doctest_setup! { |pool| {
+    /// use sqlx_crud::Crud;
+    ///
+    /// let all_users: Vec<User> = User::paged(&pool).await?;
+    /// # }}
+    /// ```
+    ///
+    /// [try_collect]: https://docs.rs/futures/latest/futures/stream/trait.TryStreamExt.html#method.try_collect
+    fn paginated(self, pool: E, limit: Option<i64>, offset: Option<i64>) -> CrudFut<'e, Vec<Self>> {
+        Box::pin({
+            if let (Some(limit), Some(offset)) = (limit, offset) {
+                ::sqlx::query_with::<E::Database, _>(
+                    Self::paginated_sql(),
+                    self.paginated_args(limit, offset),
+                )
+            } else {
+                ::sqlx::query_with::<E::Database, _>(
+                    Self::select_sql(),
+                    <E::Database as ::sqlx::database::Database>::Arguments::default(),
+                )
+            }
+            .try_map(|r| Self::from_row(&r))
+            .fetch_all(pool)
+        })
     }
 
     /// Looks up a row by ID and returns a future that resolves an

@@ -103,6 +103,10 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
         .join(", ");
 
     let select_sql = format!("SELECT {} FROM {}", column_list, table_name);
+    let paginated_sql = format!(
+        "SELECT {} FROM {} LIMIT ? OFFSET ?",
+        column_list, table_name
+    );
     let select_by_id_sql = format!(
         "SELECT {} FROM {} WHERE {} = ? LIMIT 1",
         column_list, table_name, id_column
@@ -123,6 +127,7 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
         insert_sql: #insert_sql,
         update_by_id_sql: #update_by_id_sql,
         delete_by_id_sql: #delete_by_id_sql,
+        paginated_sql: #paginated_sql,
     }
 }
 
@@ -209,6 +214,10 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
             fn delete_by_id_sql() -> &'static str {
                 #model_schema_ident.delete_by_id_sql
             }
+
+            fn paginated_sql() -> &'static str {
+                #model_schema_ident.paginated_sql
+            }
         }
 
         #[automatically_derived]
@@ -227,6 +236,18 @@ fn build_sqlx_crud_impl(config: &Config) -> TokenStream2 {
                 args.reserve(1usize, #(#update_query_size)+*);
                 #(#update_query_args)*
                 #update_query_args_id
+                args
+            }
+
+            fn paginated_args(self, limit: i64, offset: i64) -> <#db_ty as ::sqlx::database::Database>::Arguments<'e> {
+                use ::sqlx::Arguments as _;
+                let mut args = <#db_ty as ::sqlx::database::Database>::Arguments::default();
+                args.reserve(2usize,
+                    ::sqlx::encode::Encode::<#db_ty>::size_hint(&limit) +
+                    ::sqlx::encode::Encode::<#db_ty>::size_hint(&offset)
+                );
+                let _ = args.add(limit);
+                let _ = args.add(offset);
                 args
             }
         }
