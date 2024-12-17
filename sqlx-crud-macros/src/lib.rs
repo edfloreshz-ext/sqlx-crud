@@ -73,7 +73,7 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
         config.named.iter().count() - 1
     };
     let insert_sql_binds = (0..insert_bind_cnt)
-        .map(|_| "?")
+        .map(|i| format!("${}", i + 1))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -82,9 +82,9 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
         .iter()
         .flat_map(|f| &f.ident)
         .filter(|i| *i != &config.id_column_ident)
-        .map(|i| format!("{} = ?", config.quote_ident(&i.to_string())))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .enumerate()
+        .map(|(i, ident)| format!("{} = ${}", config.quote_ident(&ident.to_string()), i + 1))
+        .collect::<Vec<_>>();
 
     let insert_column_list = config
         .named
@@ -104,11 +104,11 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
 
     let select_sql = format!("SELECT {} FROM {}", column_list, table_name);
     let paginated_sql = format!(
-        "SELECT {} FROM {} LIMIT ? OFFSET ?",
+        "SELECT {} FROM {} LIMIT $1 OFFSET $2",
         column_list, table_name
     );
     let select_by_id_sql = format!(
-        "SELECT {} FROM {} WHERE {} = ? LIMIT 1",
+        "SELECT {} FROM {} WHERE {} = $1 LIMIT 1",
         column_list, table_name, id_column
     );
     let insert_sql = format!(
@@ -116,10 +116,14 @@ fn build_sql_queries(config: &Config) -> TokenStream2 {
         table_name, insert_column_list, insert_sql_binds, column_list
     );
     let update_by_id_sql = format!(
-        "UPDATE {} SET {} WHERE {} = ? RETURNING {}",
-        table_name, update_sql_binds, id_column, column_list
+        "UPDATE {} SET {} WHERE {} = ${} RETURNING {}",
+        table_name,
+        update_sql_binds.join(", "),
+        id_column,
+        update_sql_binds.len() + 1,
+        column_list
     );
-    let delete_by_id_sql = format!("DELETE FROM {} WHERE {} = ?", table_name, id_column);
+    let delete_by_id_sql = format!("DELETE FROM {} WHERE {} = $1", table_name, id_column);
 
     quote! {
         select_sql: #select_sql,
