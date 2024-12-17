@@ -251,7 +251,7 @@ where
     /// # sqlx_crud::doctest_setup! { |pool| {
     /// use sqlx_crud::Crud;
     ///
-    /// let all_users: Vec<User> = User::paged(&pool).await?;
+    /// let all_users: Vec<User> = User::paginated(&pool, 20, 0).await?;
     /// # }}
     /// ```
     ///
